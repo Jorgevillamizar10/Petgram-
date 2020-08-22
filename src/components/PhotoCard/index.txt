@@ -1,0 +1,101 @@
+------------------CODIGO COMENTADO----------------------
+import React, { Fragment, useEffect, useRef, useState } from "react";
+import { Article, ImgWrapper, Img, Button } from "./styles";
+import { MdFavoriteBorder, MdFavorite } from "react-icons/md";
+
+const DEFAULT_IMAGE =
+  "https://res.cloudinary.com/midudev/image/upload/w_300/q_80/v1560262103/dogs.png";
+
+export const PhotoCard = ({ id, likes = 0, src = DEFAULT_IMAGE }) => {
+  //empezamos con el useRef para cojer la referencia del elemento en el dom
+  const ElementRef = useRef(null);
+
+  //le añadimos el estado local
+  const [show, setShow] = useState(false);
+
+  //estado local para los likes
+  //para que cuando le de like a un elemento no se me cambien todos si no solo el indicado trabajamos con el id de cada elemento
+  const key = `like-${id}`;
+  const [liked, setliked] = useState(() => {
+    try {
+      //para que el render me mantenga el estado y no me lo borre si actualizo la pagina
+      const like = window.localStorage.getItem(key);
+      return JSON.parse(like);
+    } catch (e) {
+      return false;
+    }
+  });
+
+  console.log(liked);
+
+  useEffect(() => {
+    // console.log(ElementRef.current);
+
+    Promise.resolve(
+      //para usar el import solo cuando lo necesitamos vamos a chequear si el navegador lo tiene para asi no ejecutarlo sin necesidad
+      //-> este terneario me devuelve una promesa
+      typeof window.IntersectionObserver !== "undefined"
+        ? window.IntersectionObserver
+        : import("intersection-observer")
+      //import dinamico -> devuelve una promesa
+    ).then(() => {
+      //IntersectionObserver es una api de la platadorma de la web esta en el objeto window
+      //recibe una funcion que va a tener todas las entradas qwue estan en el viewport y esta observando
+      const observer = new window.IntersectionObserver((entries) => {
+        //isIntersecting -> la constante dentro del IntersectionObserver que nos va a indicar si nuestro elemento esta visible(viewport) o si no lo esta con un booleano
+        const { isIntersecting } = entries[0];
+        if (isIntersecting) {
+          // console.log("Si");
+          //actualizamos el estado del componente
+          setShow(true);
+          //evitamos que el observador se vuelva a actualizar
+          observer.disconnect();
+        }
+      });
+
+      //lo usamos: y le pasamos el elemento que queremos observar
+      observer.observe(ElementRef.current);
+    });
+
+    //queremos que se ejecdute solo cuando cambie la referencia
+  }, [ElementRef]);
+
+  //para manejar los iconos cuando le doy like y cuando no
+  const Icon = liked ? MdFavorite : MdFavoriteBorder;
+
+  //va a intentar guardar en el localStorage el valor
+  const setLocalStorage = (value) => {
+    try {
+      window.localStorage.setItem(key, value);
+      setliked(value);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  return (
+    //utilizamos el ref como una prop en article
+    //->la prop ref es una prop especial de react que nos va a permitir capturar el elemento del dom
+    //con ref vamos a guardar esa referencia en esta constante
+    <Article ref={ElementRef}>
+      {
+        // haciendo el ternario manejando el estado
+        show && (
+          <Fragment>
+            {/* va al detalle de la fotografia para eso el string /detail/ */}
+            <a href={`/detail/${id}`}>
+              <ImgWrapper>
+                <Img src={src} />
+              </ImgWrapper>
+            </a>
+
+            {/* boton que maneja los likes que por defecto es 0  */}
+            <Button onclick={() => setLocalStorage(!liked)}>
+              <Icon size="32px" /> {likes} likes!
+            </Button>
+          </Fragment>
+        )
+      }
+    </Article>
+  );
+};
